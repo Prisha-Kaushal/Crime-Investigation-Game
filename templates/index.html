@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Crime Investigation Game</title>
+
+<style>
+body {
+  margin: 0;
+  font-family: 'Segoe UI', sans-serif;
+  background: url('https://images.unsplash.com/photo-1503435980610-a51f3ddfee50') no-repeat center center fixed;
+  background-size: cover;
+  color: white;
+}
+
+/* overlay */
+.overlay {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.85);
+}
+
+/* header */
+header {
+  text-align: center;
+  padding: 20px;
+  font-size: 28px;
+  background: rgba(0,0,0,0.6);
+  border-bottom: 2px solid crimson;
+}
+
+/* layout */
+.container {
+  display: flex;
+  justify-content: space-around;
+  margin-top: 60px;
+  gap: 20px;
+  position: relative;
+  z-index: 2;
+}
+
+/* panels */
+.panel {
+  width: 28%;
+  padding: 20px;
+  border-radius: 15px;
+  background: rgba(255,255,255,0.05);
+  backdrop-filter: blur(15px);
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+/* center */
+.center {
+  text-align: center;
+}
+
+/* buttons */
+.start-btn {
+  margin-top: 15px;
+  padding: 12px;
+  background: crimson;
+  border: none;
+  border-radius: 10px;
+  color: white;
+  cursor: pointer;
+}
+
+/* suspects */
+.suspect {
+  background: rgba(0,0,0,0.4);
+  padding: 10px;
+  margin: 10px 0;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.suspect:hover {
+  background: crimson;
+}
+
+/* score */
+#scoreBoard {
+  position: fixed;
+  top: 80px;
+  right: 20px;
+  background: black;
+  padding: 10px;
+  border-radius: 10px;
+}
+
+/* evidence */
+#evidenceList div {
+  margin: 5px 0;
+}
+
+/* end screen */
+#endScreen {
+  display:none;
+  position:fixed;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+  background:black;
+  text-align:center;
+  padding-top:150px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="overlay"></div>
+
+<header>🕵️ Crime Investigation Game</header>
+
+<div id="scoreBoard">Score: <span id="score">0</span></div>
+
+<div class="container">
+
+<!-- LEFT -->
+<div class="panel">
+  <h3>📁 Case File</h3>
+  <p>Victim: Mr. Roy</p>
+  <p>Location: Hotel Room</p>
+
+  <h3>🧾 Evidence</h3>
+  <div id="evidenceList">
+    <p>No evidence</p>
+  </div>
+
+  <button class="start-btn" onclick="collectEvidence()">Collect Evidence</button>
+</div>
+
+<!-- CENTER -->
+<div class="panel center">
+
+  <img src="https://images.unsplash.com/photo-1581090700227-4c4c5c5f6d89"
+  style="width:100%; border-radius:10px;">
+
+  <h2>Start Investigation</h2>
+  <button class="start-btn" onclick="startInvestigation()">Start</button>
+
+</div>
+
+<!-- RIGHT -->
+<div class="panel">
+
+  <h3>👤 Suspects</h3>
+
+  <div class="suspect" onclick="askSuspect('John')">John</div>
+  <div class="suspect" onclick="askSuspect('Sarah')">Sarah</div>
+  <div class="suspect" onclick="askSuspect('Alex')">Alex</div>
+
+  <button class="start-btn" onclick="accuseSuspect()">Accuse</button>
+
+</div>
+
+</div>
+
+<!-- END -->
+<div id="endScreen">
+  <h1 id="endTitle"></h1>
+  <p id="endMessage"></p>
+  <h2 id="finalScore"></h2>
+  <button onclick="location.reload()">Restart</button>
+</div>
+
+<!-- WATSON -->
+<script>
+window.watsonAssistantChatOptions = {
+  integrationID: "73a7d4b6-a9e6-477d-ba41-8db3f52db673",
+  region: "eu-gb",
+  serviceInstanceID: "e3431abb-31f0-42bd-b5a7-9fcca7655352",
+  onLoad: function(instance) {
+    window.chatInstance = instance;
+    instance.render();
+  }
+};
+
+setTimeout(()=>{
+  let t=document.createElement("script");
+  t.src="https://web-chat.global.assistant.watson.appdomain.cloud/versions/latest/WatsonAssistantChatEntry.js";
+  document.head.appendChild(t);
+},0);
+</script>
+
+<!-- GAME LOGIC -->
+<script>
+
+let score=0;
+let evidenceBag=[];
+let correctEvidence=["Fingerprint","Knife","CCTV"];
+
+/* score */
+function updateScore(v){
+  score+=v;
+  document.getElementById("score").innerText=score;
+}
+
+/* start */
+function startInvestigation(){
+  window.chatInstance?.openWindow();
+  updateScore(5);
+}
+
+/* chat */
+function askSuspect(name){
+  window.chatInstance?.openWindow();
+  setTimeout(()=>{
+    window.chatInstance.send({input:{text:"talk to "+name}});
+  },500);
+  updateScore(10);
+}
+
+/* evidence */
+function collectEvidence(){
+  let pool=["Fingerprint","Knife","CCTV","Witness","Door Lock"];
+  let item=pool[Math.floor(Math.random()*pool.length)];
+
+  if(!evidenceBag.includes(item)){
+    evidenceBag.push(item);
+    updateEvidenceUI();
+    updateScore(5);
+  }
+}
+
+function updateEvidenceUI(){
+  let box=document.getElementById("evidenceList");
+  box.innerHTML="";
+  evidenceBag.forEach(i=>{
+    let d=document.createElement("div");
+    d.innerText=i;
+    box.appendChild(d);
+  });
+}
+
+/* accuse */
+function accuseSuspect(){
+
+  if(evidenceBag.length<3){
+    endGame("Failed","Not enough evidence");
+    return;
+  }
+
+  let hasAll=correctEvidence.every(e=>evidenceBag.includes(e));
+
+  if(hasAll){
+    updateScore(50);
+    endGame("Solved","You proved the killer!");
+  } else {
+    updateScore(-20);
+    endGame("Failed","Wrong evidence");
+  }
+}
+
+/* end */
+function endGame(title,msg){
+  document.getElementById("endScreen").style.display="block";
+  document.getElementById("endTitle").innerText=title;
+  document.getElementById("endMessage").innerText=msg;
+  document.getElementById("finalScore").innerText="Score: "+score;
+}
+
+</script>
+
+</body>
+</html>
